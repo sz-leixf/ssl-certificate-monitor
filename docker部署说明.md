@@ -49,33 +49,6 @@ data/
 
 **⚠️ 重要**：请定期备份 `data` 目录，避免数据丢失。
 
-## 环境变量配置
-
-可以通过环境变量快速配置企业微信 Webhook：
-
-### 方式 1：在 docker-compose.yml 中设置
-
-编辑 `docker-compose.yml` 文件：
-
-```yaml
-environment:
-  - WECHAT_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY
-```
-
-### 方式 2：使用 .env 文件
-
-在项目根目录创建 `.env` 文件：
-
-```env
-WECHAT_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY
-```
-
-然后在 `docker-compose.yml` 中引用：
-
-```yaml
-environment:
-  - WECHAT_WEBHOOK_URL=${WECHAT_WEBHOOK_URL}
-```
 
 ## 常用命令
 
