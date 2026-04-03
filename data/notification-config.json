@@ -1,0 +1,48 @@
+{
+  "wechat": {
+    "webhookUrl": "",
+    "enabled": true,
+    "mention": {
+      "mobiles": [],
+      "userids": []
+    }
+  },
+  "schedule": {
+    "enabled": true,
+    "days": 1,
+    "hour": 9,
+    "minute": 30
+  },
+  "templates": {
+    "alert": {
+      "title": "🔔 SSL证书到期提醒",
+      "content": "### 🔔 SSL证书到期提醒\n\n> **域名**: {domain_name}\n> **到期时间**: {valid_until}\n> **剩余天数**: {days_until_expiry} 天\n> **证书颁发者**: {issuer}\n> **证书主题**: {subject}\n> **发送时间**: {send_time}\n\n请及时更新证书以免影响服务！",
+      "type": "markdown"
+    },
+    "expired": {
+      "title": "🚨 SSL证书已过期",
+      "content": "### 🚨 SSL证书已过期\n\n> **域名**: {domain_name}\n> **到期时间**: {valid_until}\n> **证书颁发者**: {issuer}\n> **证书主题**: {subject}\n> **发送时间**: {send_time}\n\n证书已过期，请立即更新！",
+      "type": "markdown"
+    },
+    "warning": {
+      "title": "⚠️ SSL证书即将到期",
+      "content": "### ⚠️ SSL证书即将到期\n\n> **域名**: {domain_name}\n> **到期时间**: {valid_until}\n> **剩余天数**: {days_until_expiry} 天\n> **证书颁发者**: {issuer}\n> **证书主题**: {subject}\n> **发送时间**: {send_time}\n\n证书即将到期，请及时安排更新！",
+      "type": "markdown"
+    },
+    "success": {
+      "title": "✅ 证书检查成功",
+      "content": "### ✅ 证书检查成功\n\n> **域名**: {domain_name}\n> **发送时间**: {send_time}\n> **证书状态**: 正常\n> **剩余天数**: {days_until_expiry} 天",
+      "type": "markdown"
+    },
+    "error": {
+      "title": "❌ 证书检查失败",
+      "content": "### ❌ 证书检查失败\n\n> **域名**: {domain_name}\n> **发送时间**: {send_time}\n> **错误信息**: {error}\n\n请检查域名配置和网络连接！",
+      "type": "markdown"
+    },
+    "test": {
+      "title": "📝 测试通知",
+      "content": "### 📝 测试通知\n\n> **域名**: {domain_name}\n> **消息**: 这是一条测试通知\n> **发送时间**: {send_time}\n\nSSL证书监控系统运行正常！",
+      "type": "markdown"
+    }
+  }
+}

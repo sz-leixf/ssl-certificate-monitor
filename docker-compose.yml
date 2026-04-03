@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # SSL证书监控服务
+  ssl-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ssl-certificate-monitor:latest
+    container_name: ssl-certificate-monitor
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      # 数据持久化 - 存储数据库和配置文件
+      # 数据库文件: domains.db, certificate_checks.db, notifications.db
+      # 配置文件: notification-config.json
+      - ./data:/app/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - ssl-monitor-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/domains', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  ssl-monitor-network:
+    driver: bridge

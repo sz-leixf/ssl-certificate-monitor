@@ -1,0 +1,2767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSL证书监控系统</title>
+  <style>
+    :root {
+      --primary-color: #1890ff;
+      --primary-hover: #40a9ff;
+      --success-color: #52c41a;
+      --warning-color: #faad14;
+      --error-color: #f5222d;
+      --text-primary: #262626;
+      --text-secondary: #595959;
+      --text-disabled: #8c8c8c;
+      --border-color: #f0f0f0;
+      --bg-primary: #ffffff;
+      --bg-secondary: #fafafa;
+      --bg-tertiary: #f5f5f5;
+      --sidebar-bg: #001529;
+      --sidebar-width: 256px;
+      --header-height: 64px;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5715;
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+    
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Header */
+    .layout-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: var(--header-height);
+      padding: 0 24px;
+      background: #001529;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+    }
+    
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    .header-logo img {
+      width: 32px;
+      height: 32px;
+    }
+    
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-user {
+      position: relative;
+    }
+
+    .header-user-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.85);
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .header-user-trigger:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      min-width: 150px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .dropdown-menu.show {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .dropdown-item:hover {
+      background: var(--bg-secondary);
+      color: var(--primary-color);
+    }
+
+    .dropdown-item.danger {
+      color: var(--error-color);
+    }
+
+    .dropdown-item.danger:hover {
+      background: #fff1f0;
+    }
+    
+    /* Layout */
+    .layout-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    /* Sidebar */
+    .layout-sider {
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-shrink: 0;
+    }
+    
+    .menu {
+      list-style: none;
+      padding: 8px 0;
+    }
+    
+    .menu-item {
+      padding: 0 24px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .menu-item-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      color: rgba(255, 255, 255, 0.65);
+      text-decoration: none;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    
+    .menu-item-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .menu-item.active .menu-item-link {
+      color: #fff;
+      background: var(--primary-color);
+    }
+    
+    .menu-item-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Content */
+    .layout-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--bg-tertiary);
+    }
+    
+    .content-inner {
+      padding: 24px;
+      min-height: auto;
+    }
+    
+    /* Page Header */
+    .page-header {
+      background: var(--bg-primary);
+      padding: 16px 24px;
+      margin-bottom: 16px;
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    
+    .page-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    .page-header-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+    
+    /* Search Box */
+    .search-box {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .search-input {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+      width: 200px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .search-input:focus {
+      border-color: var(--primary-color);
+    }
+    
+    .page-header-actions {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .page-header-extra {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    
+    /* Card */
+    .card {
+      background: var(--bg-primary);
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      margin-bottom: 16px;
+    }
+    
+    .card-body {
+      padding: 24px;
+    }
+    
+    /* Table */
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-primary);
+    }
+    
+    .table-wrapper {
+      background: var(--bg-primary);
+      border-radius: 4px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      overflow-x: auto;
+    }
+    
+    .table thead {
+      background: var(--bg-secondary);
+    }
+    
+    .table th {
+      padding: 16px;
+      text-align: left;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 14px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    
+    .table td {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 14px;
+      vertical-align: middle;
+    }
+    
+    .table tbody tr:hover {
+      background: var(--bg-secondary);
+    }
+    
+    /* Status Badge */
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 12px;
+      border-radius: 2px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    
+    .status-badge.success {
+      background: #f6ffed;
+      border-color: #b7eb8f;
+      color: #52c41a;
+    }
+    
+    .status-badge.warning {
+      background: #fffbe6;
+      border-color: #ffe58f;
+      color: #faad14;
+    }
+    
+    .status-badge.error {
+      background: #fff1f0;
+      border-color: #ffa39e;
+      color: #f5222d;
+    }
+    
+    .status-badge.default {
+      background: #fafafa;
+      border-color: #d9d9d9;
+      color: var(--text-disabled);
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      padding: 4px 15px;
+      font-size: 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 1px solid transparent;
+      text-decoration: none;
+      line-height: 1.5715;
+      font-weight: 400;
+      text-align: center;
+      background: transparent;
+      outline: none;
+    }
+    
+    .btn-primary {
+      color: #fff;
+      background: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    
+    .btn-default {
+      color: var(--text-primary);
+      background: #fff;
+      border-color: #d9d9d9;
+    }
+    
+    .btn-default:hover {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    
+    .btn-danger {
+      color: #fff;
+      background: #ff4d4f;
+      border-color: #ff4d4f;
+    }
+    
+    .btn-danger:hover {
+      background: #ff7875;
+      border-color: #ff7875;
+    }
+    
+    .btn-link {
+      color: var(--primary-color);
+      background: transparent;
+      border-color: transparent;
+      padding: 4px 8px;
+    }
+    
+    .btn-link:hover {
+      color: var(--primary-hover);
+    }
+    
+    .btn-sm {
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+
+    /* 消息模板按钮容器 */
+    .template-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .template-buttons button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    /* Form */
+    .form {
+      max-width: 600px;
+    }
+
+    .form-item {
+      margin-bottom: 24px;
+    }
+
+    .form-item-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+    }
+
+    .form-item-label.required::before {
+      content: '*';
+      color: var(--error-color);
+      margin-right: 4px;
+    }
+
+    .form-item-control {
+      width: 100%;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 8px 11px;
+      font-size: 14px;
+      border: 1px solid #d9d9d9;
+      border-radius: 2px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    .form-input:hover {
+      border-color: var(--primary-hover);
+    }
+
+    .form-input:focus {
+      border-color: var(--primary-hover);
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    .form-item-extra {
+      color: var(--text-disabled);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Toggle Switch */
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+      vertical-align: middle;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #d9d9d9;
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background-color: var(--success-color);
+    }
+
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+
+    /* Notification */
+    .notification-container {
+      position: fixed;
+      top: 16px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .notification {
+      min-width: 330px;
+      max-width: 480px;
+      background: #fff;
+      padding: 16px 24px;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+      animation: slideIn 0.3s ease;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .notification-icon {
+      font-size: 20px;
+    }
+
+    .notification.success .notification-icon {
+      color: var(--success-color);
+    }
+
+    .notification.error .notification-icon {
+      color: var(--error-color);
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .notification-message {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      font-size: 18px;
+      color: var(--text-disabled);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .modal-close:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      color: #d9d9d9;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+      font-size: 16px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .empty-state-desc {
+      color: var(--text-disabled);
+      margin-bottom: 24px;
+    }
+
+    /* Utility */
+    .hidden {
+      display: none !important;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .mt-16 {
+      margin-top: 16px;
+    }
+
+    .mb-16 {
+      margin-bottom: 16px;
+    }
+
+    /* Login Page */
+    .login-page {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #001529 0%, #003a70 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-container {
+      background: #fff;
+      padding: 48px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .login-header p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .login-form {
+      max-width: none;
+    }
+
+    /* Action Buttons */
+    .action-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding: 16px 0;
+    }
+
+    .pagination-info {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-right: 16px;
+    }
+
+    .pagination-btn {
+      min-width: 32px;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border-color);
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary);
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .pagination-btn:disabled {
+      color: var(--text-disabled);
+      border-color: var(--border-color);
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .pagination-btn.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .pagination-ellipsis {
+      padding: 0 8px;
+      color: var(--text-secondary);
+    }
+
+    /* Sortable Table Header */
+    .table thead th.sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.3s;
+    }
+
+    .table thead th.sortable:hover {
+      background: var(--bg-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="layout-header">
+      <div class="header-logo" onclick="switchPage('monitor')">
+        <span>🔒</span>
+        <span>SSL证书监控系统</span>
+      </div>
+      <div class="header-actions">
+        <div class="header-user" id="header-user" style="display: none;">
+          <div class="header-user-trigger" onclick="toggleUserMenu()">
+            <span>👤</span>
+            <span>管理员</span>
+            <span style="font-size: 10px;">▼</span>
+          </div>
+          <div class="dropdown-menu" id="user-menu">
+            <div class="dropdown-item" onclick="showChangePasswordModal()">
+              <span>🔐</span>
+              <span>修改密码</span>
+            </div>
+            <div class="dropdown-item danger" onclick="handleLogout()">
+              <span>🚪</span>
+              <span>退出登录</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <div class="layout-body">
+      <!-- Sidebar -->
+      <aside class="layout-sider">
+        <ul class="menu">
+          <li class="menu-item active" data-page="monitor" onclick="switchPage('monitor')">
+            <a class="menu-item-link">
+              <span class="menu-item-icon">📊</span>
+              <span>证书监控</span>
+            </a>
+          </li>
+          <li class="menu-item" data-page="add" onclick="switchPage('add')">
+            <a class="menu-item-link">
+              <span class="menu-item-icon">➕</span>
+              <span>添加域名</span>
+            </a>
+          </li>
+          <li class="menu-item" data-page="settings" onclick="switchPage('settings')">
+            <a class="menu-item-link">
+              <span class="menu-item-icon">⚙️</span>
+              <span>通知设置</span>
+            </a>
+          </li>
+          <li class="menu-item" data-page="schedule" onclick="switchPage('schedule')">
+            <a class="menu-item-link">
+              <span class="menu-item-icon">🕐</span>
+              <span>定时设置</span>
+            </a>
+          </li>
+        </ul>
+      </aside>
+      
+      <!-- Content -->
+      <main class="layout-content">
+        <div class="content-inner">
+          <!-- Monitor Page -->
+          <div id="page-monitor" class="page">
+            <div class="page-header">
+              <div class="page-header-row">
+                <h1 class="page-header-title">域名证书监控</h1>
+                <div class="page-header-actions">
+                  <div class="search-box">
+                    <input type="text" id="search-input" class="search-input" placeholder="搜索域名..." onkeyup="handleSearch(event)">
+                    <button class="btn btn-default" onclick="performSearch()">🔍 搜索</button>
+                    <button class="btn btn-default" onclick="clearSearch()" id="btn-clear-search" style="display: none;">✕ 清除</button>
+                  </div>
+                  <button class="btn btn-default" onclick="handleCheckAll()">🔄 批量检查</button>
+                  <button class="btn btn-default" onclick="showImportModal()">📥 批量导入</button>
+                  <button class="btn btn-default" onclick="handleBatchDelete()" id="btn-batch-delete" style="display: inline-block;">🗑️ 批量删除</button>
+                  <button class="btn btn-default" onclick="handleBatchToggle(true)" id="btn-batch-enable" style="display: inline-block;">✅ 批量启用</button>
+                  <button class="btn btn-default" onclick="handleBatchToggle(false)" id="btn-batch-disable" style="display: inline-block;">❌ 批量禁用</button>
+                  <button class="btn btn-default" onclick="showBatchAlertDaysModal()" id="btn-batch-alert-days" style="display: inline-block;">🔔 批量修改提醒阀值</button>
+                  <button class="btn btn-primary" onclick="switchPage('add')">➕ 添加域名</button>
+                </div>
+              </div>
+              <div class="page-header-extra">
+                <span id="certificate-stats">实时监控SSL证书状态，及时提醒证书到期（0个）</span>
+              </div>
+            </div>
+            
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;"><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+                    <th class="sortable" onclick="handleSort('name')" data-field="name">证书域名</th>
+                    <th>颁发机构</th>
+                    <th class="sortable" onclick="handleSort('status')" data-field="status">证书状态</th>
+                    <th class="sortable" onclick="handleSort('valid_until')" data-field="valid_until">证书到期时间</th>
+                    <th>上次检查时间</th>
+                    <th class="sortable" onclick="handleSort('enabled')" data-field="enabled">禁用/启用</th>
+                    <th>检查状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="domains-tbody"></tbody>
+              </table>
+              <div id="empty-state"></div>
+              <!-- 分页组件 -->
+              <div id="pagination-container" class="pagination"></div>
+            </div>
+          </div>
+          
+          <!-- Add Page -->
+          <div id="page-add" class="page hidden">
+            <div class="page-header">
+              <h1 class="page-header-title">添加域名</h1>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <form class="form" onsubmit="handleAddDomain(event)">
+                  <div class="form-item">
+                    <label class="form-item-label required">域名</label>
+                    <div class="form-item-control">
+                      <input type="text" class="form-input" id="add-domain-name" required placeholder="请输入域名，如：example.com" autofocus>
+                    </div>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-item-label required">提醒阈值（天）</label>
+                    <div class="form-item-control">
+                      <input type="number" class="form-input" id="add-alert-days" value="10" min="1" max="365" required>
+                    </div>
+                    <div class="form-item-extra">证书到期前多少天发送提醒通知</div>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-item-control">
+                      <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="add-domain-enabled" checked>
+                        <span>启用监控</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="form-item">
+                    <button type="submit" class="btn btn-primary">提交</button>
+                    <button type="button" class="btn btn-default" onclick="switchPage('monitor')">取消</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Settings Page -->
+          <div id="page-settings" class="page hidden">
+            <div class="page-header">
+              <h1 class="page-header-title">通知设置</h1>
+              <div class="page-header-extra">配置企业微信机器人接收证书到期提醒</div>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <form class="form" onsubmit="handleSaveSettings(event)">
+                  <div class="form-item">
+                    <label class="form-item-label required">企业微信 Webhook URL</label>
+                    <div class="form-item-control">
+                      <input type="text" class="form-input" id="wechat-webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=YOUR_KEY">
+                    </div>
+                    <div class="form-item-extra">
+                      <div>💡 在企业微信群中添加机器人后获取 Webhook 地址</div>
+                      <div style="margin-top: 4px;">
+                        <a href="https://work.weixin.qq.com/api/doc/90000/90136/90328" target="_blank" style="color: var(--primary-color);">查看如何创建企业微信机器人 →</a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-item">
+                    <label class="form-item-label">通知开关</label>
+                    <div class="form-item-control" style="display: flex; align-items: center; gap: 8px;">
+                      <label class="toggle">
+                        <input type="checkbox" id="notify-enabled" checked>
+                        <span class="toggle-slider"></span>
+                      </label>
+                      <span id="notify-enabled-text">启用通知</span>
+                    </div>
+                    <div class="form-item-extra">关闭后将不再发送企业微信通知</div>
+                  </div>
+
+                  <div class="form-item">
+                    <label class="form-item-label">@成员提醒</label>
+                    <div class="form-item-control">
+                      <input type="text" class="form-input" id="notify-mobiles" placeholder="手机号，多个用逗号分隔" style="margin-bottom: 8px;">
+                      <input type="text" class="form-input" id="notify-userids" placeholder="用户ID，多个用逗号分隔">
+                    </div>
+                    <div class="form-item-extra">填写后会在通知时@指定成员（可选）</div>
+                  </div>
+
+                  <div class="form-item">
+                    <div class="card" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                      <div class="card-body" style="padding: 16px;">
+                        <h4 style="margin-bottom: 12px; font-size: 14px; font-weight: 500;">🧪 测试通知</h4>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                          <button type="button" class="btn btn-default" onclick="handleTestNotification()">发送测试通知</button>
+                          <span id="test-notification-status" style="color: var(--text-secondary); font-size: 13px;">点击发送测试通知到企业微信</span>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 12px; color: var(--text-disabled);">
+                          提示：测试通知不会影响实际监控，仅用于验证配置是否正确
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-item">
+                    <button type="submit" class="btn btn-primary">💾 保存设置</button>
+                    <button type="button" class="btn btn-default" onclick="handleResetSettings()">🔄 重置默认</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Schedule Page -->
+          <div id="page-schedule" class="page hidden">
+            <div class="page-header">
+              <h1 class="page-header-title">定时设置</h1>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <form class="form" onsubmit="handleSaveSchedule(event)">
+                  <div class="form-item">
+                    <label class="form-item-label required">启用定时检查</label>
+                    <div class="form-item-control">
+                      <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="schedule-enabled" checked>
+                        <span>启用</span>
+                      </label>
+                    </div>
+                    <div class="form-item-extra">启用后将按照设置的时间自动检查证书</div>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-item-label required">检查间隔（天）</label>
+                    <div class="form-item-control">
+                      <input type="number" class="form-input" id="schedule-days" value="1" min="1" max="30" required>
+                    </div>
+                    <div class="form-item-extra">每隔几天自动检查一次证书</div>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-item-label required">检查时间（时:分）</label>
+                    <div class="form-item-control" style="display: flex; gap: 12px; align-items: center;">
+                      <input type="number" class="form-input" id="schedule-hour" value="6" min="0" max="23" required style="width: 100px;">
+                      <span>:</span>
+                      <input type="number" class="form-input" id="schedule-minute" value="30" min="0" max="59" required style="width: 100px;">
+                    </div>
+                    <div class="form-item-extra">每天执行检查的时间点（24小时制）</div>
+                  </div>
+                  <div class="form-item">
+                    <div class="card" style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                      <div class="card-body" style="padding: 16px;">
+                        <h4 style="margin-bottom: 12px; font-size: 14px; font-weight: 500;">下次检查时间</h4>
+                        <div id="next-check-time" style="color: var(--text-primary); font-size: 16px;">-</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-item">
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 登录页面 -->
+  <div id="login-page" class="login-page" style="display: none;">
+    <div class="login-container">
+      <div class="login-header">
+        <h1>🔒 SSL证书监控系统</h1>
+        <p>请登录以继续</p>
+      </div>
+      <form class="login-form" onsubmit="handleLogin(event)">
+        <div class="form-item">
+          <label class="form-item-label required">用户名</label>
+          <input type="text" class="form-input" id="login-username" required placeholder="请输入用户名" autofocus>
+        </div>
+        <div class="form-item">
+          <label class="form-item-label required">密码</label>
+          <input type="password" class="form-input" id="login-password" required placeholder="请输入密码">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 16px;">登录</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="notification-container" id="notification-container"></div>
+  <div id="modal-container"></div>
+  
+  <script>
+    const API_BASE = '/api';
+    let domains = [];
+    let editingId = null;
+    let isSelectAll = false; // 是否全选所有域名
+    let searchKeyword = ''; // 搜索关键词
+
+    // ========== 认证相关功能 ==========
+
+    // 检查登录状态
+    async function checkLoginStatus() {
+      // 先检查本地存储的登录状态
+      const localLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+      if (localLoggedIn) {
+        // 本地标记已登录，直接显示主页面
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('header-user').style.display = 'block';
+
+        // 加载数据
+        fetchDomains();
+        loadSettings();
+        return;
+      }
+
+      // 没有本地登录标记，显示登录页面
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('header-user').style.display = 'none';
+    }
+
+    // 登录
+    async function handleLogin(event) {
+      event.preventDefault();
+
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      if (!username || !password) {
+        showNotification('error', '失败', '用户名和密码不能为空');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('success', '成功', '登录成功');
+          // 保存登录状态到本地存储
+          localStorage.setItem('isLoggedIn', 'true');
+          document.getElementById('login-page').style.display = 'none';
+          document.getElementById('app').style.display = 'flex';
+          document.getElementById('header-user').style.display = 'block';
+          // 清空登录表单
+          document.getElementById('login-username').value = '';
+          document.getElementById('login-password').value = '';
+          // 加载数据
+          fetchDomains();
+          loadSettings();
+        } else {
+          showNotification('error', '登录失败', data.error);
+        }
+      } catch (error) {
+        console.error('登录失败:', error);
+        showNotification('error', '失败', '登录失败，请稍后重试');
+      }
+    }
+
+    // 退出登录
+    async function handleLogout() {
+      if (!confirm('确定要退出登录吗？')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('success', '成功', '已退出登录');
+          // 清除本地登录状态
+          localStorage.removeItem('isLoggedIn');
+          // 显示登录页面
+          document.getElementById('login-page').style.display = 'flex';
+          document.getElementById('app').style.display = 'none';
+          document.getElementById('header-user').style.display = 'none';
+          // 关闭用户菜单
+          toggleUserMenu();
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('退出登录失败:', error);
+        showNotification('error', '失败', '退出登录失败');
+      }
+    }
+
+    // 切换用户菜单
+    function toggleUserMenu() {
+      const menu = document.getElementById('user-menu');
+      menu.classList.toggle('show');
+    }
+
+    // 点击页面其他地方关闭用户菜单
+    document.addEventListener('click', (event) => {
+      const headerUser = document.getElementById('header-user');
+      if (headerUser && !headerUser.contains(event.target)) {
+        const menu = document.getElementById('user-menu');
+        if (menu) {
+          menu.classList.remove('show');
+        }
+      }
+    });
+
+    // 显示修改密码弹窗
+    function showChangePasswordModal() {
+      const modal = document.getElementById('modal-container');
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="hideModal()">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3 class="modal-title">🔐 修改密码</h3>
+              <button class="modal-close" onclick="hideModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <form id="change-password-form" onsubmit="handleChangePassword(event)">
+                <div class="form-item">
+                  <label class="form-item-label required">原密码</label>
+                  <div class="form-item-control">
+                    <input type="password" class="form-input" id="old-password" required placeholder="请输入原密码" autofocus>
+                  </div>
+                </div>
+                <div class="form-item">
+                  <label class="form-item-label required">新密码</label>
+                  <div class="form-item-control">
+                    <input type="password" class="form-input" id="new-password" required placeholder="请输入新密码（至少6位）" minlength="6">
+                  </div>
+                </div>
+                <div class="form-item">
+                  <label class="form-item-label required">确认新密码</label>
+                  <div class="form-item-control">
+                    <input type="password" class="form-input" id="confirm-password" required placeholder="请再次输入新密码" minlength="6">
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-default" onclick="hideModal()">取消</button>
+              <button class="btn btn-primary" onclick="handleChangePasswordSubmit()">确定</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 关闭用户菜单
+      const menu = document.getElementById('user-menu');
+      if (menu) {
+        menu.classList.remove('show');
+      }
+    }
+
+    // 处理修改密码表单提交
+    function handleChangePassword(event) {
+      event.preventDefault();
+      handleChangePasswordSubmit();
+    }
+
+    // 提交修改密码
+    async function handleChangePasswordSubmit() {
+      const oldPassword = document.getElementById('old-password').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+
+      if (!oldPassword || !newPassword || !confirmPassword) {
+        showNotification('error', '失败', '请填写所有字段');
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showNotification('error', '失败', '两次输入的密码不一致');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showNotification('error', '失败', '新密码长度不能少于6位');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/auth/change-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPassword, newPassword })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('success', '成功', '密码修改成功，请使用新密码重新登录');
+          hideModal();
+          // 清除本地登录状态，让用户重新登录
+          localStorage.removeItem('isLoggedIn');
+          // 退出登录
+          document.getElementById('login-page').style.display = 'flex';
+          document.getElementById('app').style.display = 'none';
+          document.getElementById('header-user').style.display = 'none';
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('修改密码失败:', error);
+        showNotification('error', '失败', '修改密码失败');
+      }
+    }
+
+    // ========== 以下为原有功能 ==========
+
+    // 分页相关变量
+    let currentPage = 1;
+    const pageSize = 10;
+
+    // 排序相关变量
+    let sortField = 'name';          // 默认按域名排序
+    let sortOrder = 'asc';           // 默认升序
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      // 先检查登录状态
+      checkLoginStatus();
+    });
+
+    // 加载定时设置
+    async function loadScheduleSettings() {
+      console.log('loadScheduleSettings 被调用');
+
+      try {
+        // 从后端API获取配置
+        const response = await fetch(`${API_BASE}/schedule/config`);
+        const data = await response.json();
+
+        if (data.success) {
+          const config = data.data;
+
+          const enabledEl = document.getElementById('schedule-enabled');
+          const daysEl = document.getElementById('schedule-days');
+          const hourEl = document.getElementById('schedule-hour');
+          const minuteEl = document.getElementById('schedule-minute');
+
+          console.log('从服务器加载的配置:', config);
+          console.log('DOM elements:', { enabledEl, daysEl, hourEl, minuteEl });
+
+          if (enabledEl) enabledEl.checked = config.enabled !== false;
+          if (daysEl) daysEl.value = config.days || 1;
+          if (hourEl) hourEl.value = config.hour || 6;
+          if (minuteEl) minuteEl.value = config.minute || 30;
+
+          // 添加实时更新监听器
+          if (enabledEl) {
+            enabledEl.removeEventListener('change', updateNextCheckTime);
+            enabledEl.addEventListener('change', updateNextCheckTime);
+          }
+          if (daysEl) {
+            daysEl.removeEventListener('input', updateNextCheckTime);
+            daysEl.addEventListener('input', updateNextCheckTime);
+          }
+          if (hourEl) {
+            hourEl.removeEventListener('input', updateNextCheckTime);
+            hourEl.addEventListener('input', updateNextCheckTime);
+          }
+          if (minuteEl) {
+            minuteEl.removeEventListener('input', updateNextCheckTime);
+            minuteEl.addEventListener('input', updateNextCheckTime);
+          }
+
+          updateNextCheckTime();
+        }
+      } catch (error) {
+        console.error('加载定时设置失败:', error);
+        // 如果加载失败，使用默认值
+        const enabledEl = document.getElementById('schedule-enabled');
+        const daysEl = document.getElementById('schedule-days');
+        const hourEl = document.getElementById('schedule-hour');
+        const minuteEl = document.getElementById('schedule-minute');
+
+        if (enabledEl) enabledEl.checked = true;
+        if (daysEl) daysEl.value = 1;
+        if (hourEl) hourEl.value = 6;
+        if (minuteEl) minuteEl.value = 30;
+
+        updateNextCheckTime();
+      }
+    }
+
+    // 保存定时设置
+    async function handleSaveSchedule(event) {
+      event.preventDefault();
+
+      const enabled = document.getElementById('schedule-enabled').checked;
+      const days = document.getElementById('schedule-days').value;
+      const hour = document.getElementById('schedule-hour').value;
+      const minute = document.getElementById('schedule-minute').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/schedule/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled, days, hour, minute })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('success', '成功', '定时设置已保存');
+          updateNextCheckTime();
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('保存定时设置失败:', error);
+        showNotification('error', '失败', '保存定时设置失败');
+      }
+    }
+
+    // 更新下次检查时间显示
+    function updateNextCheckTime() {
+      const enabledEl = document.getElementById('schedule-enabled');
+      const daysEl = document.getElementById('schedule-days');
+      const hourEl = document.getElementById('schedule-hour');
+      const minuteEl = document.getElementById('schedule-minute');
+
+      const nextCheckElement = document.getElementById('next-check-time');
+      if (!nextCheckElement) return;
+
+      // 从DOM元素读取当前设置
+      const enabled = enabledEl ? enabledEl.checked : true;
+      const days = daysEl ? parseInt(daysEl.value) : 1;
+      const hour = hourEl ? parseInt(hourEl.value) : 6;
+      const minute = minuteEl ? parseInt(minuteEl.value) : 30;
+
+      if (!enabled) {
+        nextCheckElement.textContent = '定时检查已禁用';
+        return;
+      }
+
+      // 计算下次检查时间
+      const now = new Date();
+      const nextCheck = new Date();
+      nextCheck.setHours(hour, minute, 0, 0);
+
+      // 如果今天的检查时间已经过了，则计算下次检查时间
+      if (nextCheck <= now) {
+        // 根据检查周期计算下次检查日期
+        nextCheck.setDate(nextCheck.getDate() + days);
+      }
+
+      const options = { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        weekday: 'long' 
+      };
+      nextCheckElement.textContent = nextCheck.toLocaleString('zh-CN', options);
+    }
+
+    // 切换页面
+    function switchPage(pageName) {
+      console.log('switchPage 被调用，pageName:', pageName);
+
+      // 隐藏所有页面
+      document.querySelectorAll('.page').forEach(page => {
+        page.classList.add('hidden');
+      });
+
+      // 显示目标页面
+      const targetPage = document.getElementById('page-' + pageName);
+      console.log('targetPage:', targetPage);
+      if (targetPage) {
+        targetPage.classList.remove('hidden');
+      }
+
+      // 更新菜单状态
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === pageName) {
+          item.classList.add('active');
+        }
+      });
+
+      // 如果是监控页面，刷新数据
+      if (pageName === 'monitor') {
+        fetchDomains();
+      }
+
+      // 如果是定时设置页面，加载定时设置
+      if (pageName === 'schedule') {
+        loadScheduleSettings();
+      }
+    }
+
+    // 处理搜索（回车触发）
+    function handleSearch(event) {
+      if (event.key === 'Enter') {
+        performSearch();
+      }
+    }
+
+    // 执行搜索
+    function performSearch() {
+      const input = document.getElementById('search-input');
+      searchKeyword = input.value.trim();
+      
+      // 显示/隐藏清除按钮
+      const clearBtn = document.getElementById('btn-clear-search');
+      clearBtn.style.display = searchKeyword ? 'inline-block' : 'none';
+      
+      // 重置到第一页
+      currentPage = 1;
+      
+      // 重新渲染
+      renderDomains();
+      updateSortIndicators();
+      
+      // 更新统计信息
+      updateStatsWithSearch();
+    }
+
+    // 清除搜索
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      searchKeyword = '';
+      
+      // 隐藏清除按钮
+      const clearBtn = document.getElementById('btn-clear-search');
+      clearBtn.style.display = 'none';
+      
+      // 重置到第一页
+      currentPage = 1;
+      
+      // 重新渲染
+      renderDomains();
+      updateSortIndicators();
+      
+      // 更新统计信息
+      updateStatsWithSearch();
+    }
+
+    // 更新统计信息（带搜索）
+    function updateStatsWithSearch() {
+      const statsEl = document.getElementById('certificate-stats');
+      if (statsEl) {
+        if (searchKeyword) {
+          let filteredCount = domains.filter(d =>
+            d.name.toLowerCase().includes(searchKeyword.toLowerCase())
+          ).length;
+          statsEl.textContent = `实时监控SSL证书状态，及时提醒证书到期（${filteredCount}/${domains.length}个）`;
+        } else {
+          statsEl.textContent = `实时监控SSL证书状态，及时提醒证书到期（${domains.length}个）`;
+        }
+      }
+    }
+
+    // 处理排序
+    function handleSort(field) {
+      if (sortField === field) {
+        // 如果点击同一列，切换排序方向
+        sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        // 如果点击不同列，设置新的排序字段，默认升序
+        sortField = field;
+        sortOrder = 'asc';
+      }
+
+      // 重置到第一页
+      currentPage = 1;
+
+      // 排序并渲染
+      sortDomains();
+      renderDomains();
+      updateSortIndicators();
+    }
+
+    // 排序域名列表
+    function sortDomains() {
+      domains.sort((a, b) => {
+        let valueA, valueB;
+
+        switch (sortField) {
+          case 'name':
+            valueA = a.name || '';
+            valueB = b.name || '';
+            break;
+
+          case 'status':
+            // 按状态排序：已过期 > 即将过期 > 正常 > 未检查 > 已禁用
+            valueA = getStatusPriority(a);
+            valueB = getStatusPriority(b);
+            break;
+
+          case 'valid_until':
+            valueA = a.valid_until ? new Date(a.valid_until).getTime() : 0;
+            valueB = b.valid_until ? new Date(b.valid_until).getTime() : 0;
+            break;
+
+          case 'enabled':
+            // 启用的排在前面
+            valueA = a.enabled ? 1 : 0;
+            valueB = b.enabled ? 1 : 0;
+            break;
+
+          default:
+            return 0;
+        }
+
+        // 字符串比较
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+          return sortOrder === 'asc'
+            ? valueA.localeCompare(valueB, 'zh-CN')
+            : valueB.localeCompare(valueA, 'zh-CN');
+        }
+
+        // 数字比较
+        return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
+      });
+    }
+
+    // 获取状态优先级（用于排序）
+    function getStatusPriority(domain) {
+      if (!domain.enabled) return 5; // 已禁用
+
+      if (domain.is_valid === null || domain.is_valid === undefined) return 4; // 未检查
+
+      if (!domain.is_valid && domain.error) return 1; // 检查失败
+      if (!domain.is_valid) return 0; // 已过期
+
+      const alertDays = domain.alert_days || 10;
+      if (domain.days_until_expiry !== null && domain.days_until_expiry !== undefined) {
+        if (domain.days_until_expiry <= alertDays) return 2; // 即将过期
+      }
+
+      return 3; // 正常
+    }
+
+    // 更新排序指示器
+    function updateSortIndicators() {
+      // 移除所有排序类
+      document.querySelectorAll('.table thead th.sortable').forEach(th => {
+        th.classList.remove('asc', 'desc');
+      });
+
+      // 添加当前排序类
+      const currentTh = document.querySelector(`.table thead th[data-field="${sortField}"]`);
+      if (currentTh) {
+        currentTh.classList.add(sortOrder);
+      }
+    }
+
+    // 获取域名列表
+    async function fetchDomains() {
+      try {
+        const response = await fetch(`${API_BASE}/domains`);
+        const data = await response.json();
+        if (data.success) {
+          domains = data.data;
+
+          // 更新证书数量统计
+          // 更新证书数量统计
+          updateStatsWithSearch();
+
+          // 排序
+          sortDomains();
+
+          // 检查当前页是否有效，如果无效则调整
+          const totalPages = Math.ceil(domains.length / pageSize);
+          if (currentPage > totalPages && totalPages > 0) {
+            currentPage = totalPages;
+          }
+
+          renderDomains();
+          updateSortIndicators();
+        }
+      } catch (error) {
+        console.error('获取域名列表失败:', error);
+        showNotification('error', '获取域名列表失败');
+      }
+    }
+    
+    // 获取ID
+    function getId(id) {
+      if (typeof id === 'object' && id !== null) {
+        return id.toString();
+      }
+      return id;
+    }
+    
+    // 渲染域名表格
+    function renderDomains() {
+      const tbody = document.getElementById('domains-tbody');
+      const emptyState = document.getElementById('empty-state');
+      const selectAll = document.getElementById('select-all');
+      const paginationContainer = document.getElementById('pagination-container');
+
+      // 重置全选状态
+      isSelectAll = false;
+      if (selectAll) {
+        selectAll.checked = false;
+      }
+
+      // 隐藏批量操作按钮
+      updateBatchButtons();
+
+      if (!domains || domains.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-title">暂无监控域名</div>
+            <div class="empty-state-desc">点击"添加域名"开始监控SSL证书</div>
+            <button class="btn btn-primary" onclick="switchPage('add')">添加域名</button>
+          </div>
+        `;
+        paginationContainer.innerHTML = '';
+        return;
+      }
+
+      // 根据搜索关键词过滤域名
+      let filteredDomains = domains;
+      if (searchKeyword) {
+        const keyword = searchKeyword.toLowerCase();
+        filteredDomains = domains.filter(domain =>
+          domain.name.toLowerCase().includes(keyword)
+        );
+      }
+
+      emptyState.innerHTML = '';
+
+      // 如果搜索结果为空
+      if (filteredDomains.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-title">未找到匹配的域名</div>
+            <div class="empty-state-desc">尝试其他关键词或清除搜索</div>
+            <button class="btn btn-default" onclick="clearSearch()">清除搜索</button>
+          </div>
+        `;
+        paginationContainer.innerHTML = '';
+        return;
+      }
+
+      // 计算分页数据（使用过滤后的数据）
+      const totalPages = Math.ceil(filteredDomains.length / pageSize);
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const currentPageDomains = filteredDomains.slice(startIndex, endIndex);
+
+      // 渲染当前页的域名
+      tbody.innerHTML = currentPageDomains.map(domain => {
+        const status = getStatus(domain);
+        const domainId = getId(domain.id);
+
+        // 生成检查状态文本
+        let checkStatusText = '○ 未检查';
+        if (domain.last_check) {
+          checkStatusText = domain.is_valid === null || domain.is_valid === undefined
+            ? '✓ 已检查'
+            : (domain.is_valid ? '✓ 正常' : '✗ 异常');
+        }
+
+        return `
+          <tr data-id="${domainId}">
+            <td style="text-align: center;"><input type="checkbox" class="domain-checkbox" value="${domainId}" ${isSelectAll ? 'checked' : ''} onchange="handleCheckboxChange()"></td>
+            <td><strong>${domain.name}</strong></td>
+            <td>${domain.issuer || '-'}</td>
+            <td><span class="status-badge ${status.class}">${status.text}</span></td>
+            <td>${formatDate(domain.valid_until)}</td>
+            <td>${timeAgo(domain.last_check)}</td>
+            <td>
+              <label class="toggle">
+                <input type="checkbox" ${domain.enabled ? 'checked' : ''} onchange="toggleDomain('${domainId}')">
+                <span class="toggle-slider"></span>
+              </label>
+            </td>
+            <td>${checkStatusText}</td>
+            <td>
+              <div class="action-btns">
+                <button class="btn btn-link" onclick="handleCheckDomain('${domainId}')">检查</button>
+                <button class="btn btn-link" onclick="showEditModal('${domainId}')">修改</button>
+                <button class="btn btn-link" style="color: #f5222d;" onclick="handleDeleteDomain('${domainId}')">删除</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // 渲染分页组件
+      renderPagination(totalPages);
+    }
+
+    // 渲染分页组件
+    function renderPagination(totalPages) {
+      const paginationContainer = document.getElementById('pagination-container');
+
+      if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+      }
+
+      let paginationHTML = `
+        <span class="pagination-info">共 ${domains.length} 条，第 ${currentPage}/${totalPages} 页</span>
+        <button class="pagination-btn" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
+        <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+      `;
+
+      // 生成页码按钮
+      const maxVisiblePages = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+      if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+
+      if (startPage > 1) {
+        paginationHTML += `<span class="pagination-ellipsis">...</span>`;
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+          <button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>
+        `;
+      }
+
+      if (endPage < totalPages) {
+        paginationHTML += `<span class="pagination-ellipsis">...</span>`;
+      }
+
+      paginationHTML += `
+        <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>
+        <button class="pagination-btn" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>末页</button>
+      `;
+
+      paginationContainer.innerHTML = paginationHTML;
+    }
+
+    // 跳转到指定页
+    function goToPage(page) {
+      const totalPages = Math.ceil(domains.length / pageSize);
+
+      if (page < 1 || page > totalPages) {
+        return;
+      }
+
+      currentPage = page;
+      renderDomains();
+
+      // 滚动到表格顶部
+      document.getElementById('domains-tbody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+
+    // 获取状态
+    function getStatus(domain) {
+      if (!domain.enabled) return { class: 'default', text: '已禁用' };
+
+      // 处理未检查过的情况
+      if (domain.is_valid === null || domain.is_valid === undefined) {
+        return { class: 'default', text: '未检查' };
+      }
+
+      // 检查失败
+      if (!domain.is_valid && domain.error) return { class: 'error', text: '检查失败' };
+
+      // 已过期（证书本身已过期）
+      if (!domain.is_valid) return { class: 'error', text: '已过期' };
+
+      // 剩余天数小于提醒阈值，视为过期状态
+      const alertDays = domain.alert_days || 30;
+      if (domain.days_until_expiry !== null && domain.days_until_expiry !== undefined) {
+        if (domain.days_until_expiry <= alertDays) {
+          return { class: 'error', text: `即将过期（${domain.days_until_expiry}天）` };
+        }
+      }
+
+      // 正常（显示剩余天数）
+      if (domain.days_until_expiry !== null && domain.days_until_expiry !== undefined) {
+        return { class: 'success', text: `正常（${domain.days_until_expiry}天）` };
+      }
+
+      // 正常（无剩余天数信息）
+      return { class: 'success', text: '正常' };
+    }
+    
+    // 格式化日期
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // 相对时间
+    function timeAgo(dateStr) {
+      if (!dateStr) return '从未';
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '未知';
+      const now = new Date();
+      const diff = Math.floor((now - date) / 1000);
+      
+      if (diff < 60) return '刚刚';
+      if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
+      return `${Math.floor(diff / 86400)}天前`;
+    }
+    
+    // 显示通知
+    function showNotification(type, title, message) {
+      const container = document.getElementById('notification-container');
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      
+      const icon = type === 'success' ? '✓' : '✗';
+      
+      notification.innerHTML = `
+        <div class="notification-icon">${icon}</div>
+        <div class="notification-content">
+          <div class="notification-title">${title}</div>
+          <div class="notification-message">${message}</div>
+        </div>
+      `;
+      
+      container.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+    
+    // 添加域名
+    async function handleAddDomain(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('add-domain-name').value.trim();
+      const alertDays = parseInt(document.getElementById('add-alert-days').value);
+      const enabled = document.getElementById('add-domain-enabled').checked;
+      
+      try {
+        const response = await fetch(`${API_BASE}/domains`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, alert_days: alertDays, enabled })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('success', '成功', '域名添加成功');
+          document.getElementById('add-domain-name').value = '';
+          document.getElementById('add-alert-days').value = '10';
+          document.getElementById('add-domain-enabled').checked = true;
+          switchPage('monitor');
+          
+          // 自动触发一次证书检查
+          if (data.data && data.data.id) {
+            handleCheckDomain(data.data.id);
+          }
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('添加域名失败:', error);
+        showNotification('error', '失败', '添加域名失败');
+      }
+    }
+    
+    // 显示编辑弹窗
+    function showEditModal(id) {
+      const domain = domains.find(d => getId(d.id) === id);
+      if (!domain) {
+        showNotification('error', '失败', '域名不存在');
+        return;
+      }
+      
+      editingId = id;
+      const modal = document.getElementById('modal-container');
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="hideModal()">
+          <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+              <h3 class="modal-title">编辑域名</h3>
+              <button class="modal-close" onclick="hideModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <form id="edit-form" onsubmit="handleUpdateDomain(event)">
+                <div class="form-item">
+                  <label class="form-item-label required">域名</label>
+                  <div class="form-item-control">
+                    <input type="text" class="form-input" id="edit-domain-name" required value="${domain.name}">
+                  </div>
+                </div>
+                <div class="form-item">
+                  <label class="form-item-label required">提醒阈值（天）</label>
+                  <div class="form-item-control">
+                    <input type="number" class="form-input" id="edit-alert-days" value="${domain.alert_days}" min="1" max="365" required>
+                  </div>
+                </div>
+                <div class="form-item">
+                  <label class="form-item-control">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                      <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="edit-domain-enabled" ${domain.enabled ? 'checked' : ''}>
+                        <span>启用监控</span>
+                      </label>
+                      <div style="display: flex; gap: 12px;">
+                        <button type="button" class="btn btn-default" onclick="hideModal()" style="margin: 0;">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveEdit()" style="margin: 0;">保存</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // 保存编辑
+    async function saveEdit() {
+      const form = document.getElementById('edit-form');
+      if (!form) return;
+      
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      
+      await handleUpdateDomain({ preventDefault: () => {} });
+    }
+    
+    // 更新域名
+    async function handleUpdateDomain(event) {
+      if (event && event.preventDefault) {
+        event.preventDefault();
+      }
+      
+      if (!editingId) {
+        showNotification('error', '失败', '无法获取域名ID');
+        return;
+      }
+      
+      const name = document.getElementById('edit-domain-name').value.trim();
+      const alertDays = parseInt(document.getElementById('edit-alert-days').value);
+      const enabled = document.getElementById('edit-domain-enabled').checked;
+      
+      try {
+        const response = await fetch(`${API_BASE}/domains/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, alert_days: alertDays, enabled })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          // 保存当前 editingId，因为 hideModal 会清空它
+          const savedId = editingId;
+          hideModal();
+          showNotification('success', '成功', '域名更新成功');
+          fetchDomains();
+          
+          // 自动触发一次证书检查
+          handleCheckDomain(savedId);
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('更新域名失败:', error);
+        showNotification('error', '失败', '更新域名失败');
+      }
+    }
+    
+    // 隐藏弹窗
+    function hideModal() {
+      document.getElementById('modal-container').innerHTML = '';
+      editingId = null;
+      // 关闭弹窗时刷新域名列表
+      fetchDomains();
+    }
+
+    // 全选/取消全选
+    function toggleSelectAll() {
+      const selectAllCheckbox = document.getElementById('select-all');
+      isSelectAll = selectAllCheckbox.checked;
+      
+      // 获取所有域名的ID
+      const allIds = domains.map(d => getId(d.id));
+      
+      // 更新所有复选框状态
+      document.querySelectorAll('.domain-checkbox').forEach(checkbox => {
+        checkbox.checked = isSelectAll;
+      });
+      
+      updateBatchButtons(isSelectAll ? allIds.length : 0);
+    }
+    
+    // 获取选中的ID列表
+    function getSelectedIds() {
+      if (isSelectAll) {
+        return domains.map(d => getId(d.id));
+      }
+      const checkboxes = document.querySelectorAll('.domain-checkbox:checked');
+      return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+
+    // 单个复选框变化处理
+    function handleCheckboxChange() {
+      // 如果手动取消选中某个复选框，则取消全选状态
+      const checkboxes = document.querySelectorAll('.domain-checkbox');
+      const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+      const selectAllCheckbox = document.getElementById('select-all');
+      
+      if (!allChecked && isSelectAll) {
+        isSelectAll = false;
+        selectAllCheckbox.checked = false;
+      } else if (allChecked) {
+        selectAllCheckbox.checked = true;
+      }
+      
+      updateBatchButtons();
+    }
+
+    // 更新批量操作按钮显示状态
+    function updateBatchButtons(selectedCount) {
+      // 如果没有传入参数，重新计算
+      if (selectedCount === undefined) {
+        const checkboxes = document.querySelectorAll('.domain-checkbox:checked');
+        selectedCount = isSelectAll ? domains.length : checkboxes.length;
+      }
+      const btnBatchDelete = document.getElementById('btn-batch-delete');
+      const btnBatchEnable = document.getElementById('btn-batch-enable');
+      const btnBatchDisable = document.getElementById('btn-batch-disable');
+      const btnBatchAlertDays = document.getElementById('btn-batch-alert-days');
+
+      if (selectedCount > 0) {
+        btnBatchDelete.textContent = `🗑️ 批量删除 (${selectedCount})`;
+        btnBatchEnable.textContent = `✅ 批量启用 (${selectedCount})`;
+        btnBatchDisable.textContent = `❌ 批量禁用 (${selectedCount})`;
+        btnBatchAlertDays.textContent = `🔔 批量修改提醒阀值 (${selectedCount})`;
+      } else {
+        btnBatchDelete.textContent = `🗑️ 批量删除`;
+        btnBatchEnable.textContent = `✅ 批量启用`;
+        btnBatchDisable.textContent = `❌ 批量禁用`;
+        btnBatchAlertDays.textContent = `🔔 批量修改提醒阀值`;
+      }
+    }
+
+    // 批量删除域名
+    async function handleBatchDelete() {
+      const selectedIds = getSelectedIds();
+
+      if (selectedIds.length === 0) {
+        showNotification('error', '失败', '请先选择要删除的域名');
+        return;
+      }
+
+      if (!confirm(`确定要删除选中的 ${selectedIds.length} 个域名吗？`)) {
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const id of selectedIds) {
+        try {
+          const response = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      if (failCount === 0) {
+        showNotification('success', '成功', `成功删除 ${successCount} 个域名`);
+      } else {
+        showNotification('warning', '完成', `成功删除 ${successCount} 个，失败 ${failCount} 个`);
+      }
+
+      // 重置全选复选框
+      document.getElementById('select-all').checked = false;
+      await fetchDomains();
+    }
+
+    // 批量启用/禁用域名
+    async function handleBatchToggle(enabled) {
+      const selectedIds = getSelectedIds();
+
+      if (selectedIds.length === 0) {
+        showNotification('error', '失败', '请先选择要操作的域名');
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const id of selectedIds) {
+        const domain = domains.find(d => getId(d.id) === id);
+        if (!domain) {
+          failCount++;
+          continue;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/domains/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: domain.name,
+              alert_days: domain.alert_days,
+              enabled: enabled
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      const action = enabled ? '启用' : '禁用';
+      if (failCount === 0) {
+        showNotification('success', '成功', `成功${action} ${successCount} 个域名`);
+      } else {
+        showNotification('warning', '完成', `成功${action} ${successCount} 个，失败 ${failCount} 个`);
+      }
+
+      // 重置全选复选框
+      document.getElementById('select-all').checked = false;
+      await fetchDomains();
+    }
+
+    // 显示批量修改提醒阀值弹窗
+    function showBatchAlertDaysModal() {
+      const selectedIds = getSelectedIds();
+      if (selectedIds.length === 0) {
+        showNotification('error', '失败', '请先选择要修改的域名');
+        return;
+      }
+
+      const modal = document.getElementById('modal-container');
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="hideModal()">
+          <div class="modal" onclick="event.stopPropagation()" style="max-width: 400px;">
+            <div class="modal-header">
+              <h3 class="modal-title">🔔 批量修改提醒阀值</h3>
+              <button class="modal-close" onclick="hideModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-item">
+                <label class="form-item-label">提醒阀值（天）</label>
+                <div class="form-item-control">
+                  <input type="number" id="batch-alert-days" class="form-input" value="10" min="1" max="365" placeholder="提前多少天提醒">
+                </div>
+              </div>
+              <p style="color: #666; font-size: 12px; margin-top: 8px;">
+                将修改 ${selectedIds.length} 个域名的提醒阀值
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-default" onclick="hideModal()">取消</button>
+              <button class="btn btn-primary" onclick="handleBatchAlertDays()">确定</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 批量修改提醒阀值
+    async function handleBatchAlertDays() {
+      const selectedIds = getSelectedIds();
+      const alertDays = parseInt(document.getElementById('batch-alert-days').value);
+
+      if (isNaN(alertDays) || alertDays < 1 || alertDays > 365) {
+        showNotification('error', '失败', '请输入有效的提醒天数（1-365）');
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const id of selectedIds) {
+        const domain = domains.find(d => getId(d.id) === id);
+        if (!domain) {
+          failCount++;
+          continue;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/domains/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: domain.name,
+              alert_days: alertDays,
+              enabled: domain.enabled !== false
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+
+      if (failCount === 0) {
+        showNotification('success', '成功', `成功修改 ${successCount} 个域名的提醒阀值为 ${alertDays} 天`);
+      } else {
+        showNotification('warning', '完成', `成功修改 ${successCount} 个，失败 ${failCount} 个`);
+      }
+
+      // 重置全选复选框
+      document.getElementById('select-all').checked = false;
+      isSelectAll = false;
+      hideModal();
+    }
+
+
+
+    // 显示批量导入弹窗
+    function showImportModal() {
+      const modal = document.getElementById('modal-container');
+      modal.innerHTML = `
+        <div class="modal-overlay" onclick="hideModal()">
+          <div class="modal" onclick="event.stopPropagation()" style="max-width: 600px;">
+            <div class="modal-header">
+              <h3 class="modal-title">📥 批量导入域名</h3>
+              <button class="modal-close" onclick="hideModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-item">
+                <label class="form-item-label">选择文件</label>
+                <div class="form-item-control">
+                  <input type="file" id="import-file" accept=".txt" class="form-input">
+                </div>
+                <div class="form-item-extra">支持 .txt 文件，每行一个域名，例如：www.abc.com</div>
+              </div>
+              <div class="form-item">
+                <label class="form-item-label required">提醒阈值（天）</label>
+                <div class="form-item-control">
+                  <input type="number" class="form-input" id="import-alert-days" value="10" min="1" max="365" required>
+                </div>
+                <div class="form-item-extra">证书到期前多少天发送提醒通知</div>
+              </div>
+              <div class="form-item">
+                <label class="form-item-control">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="import-domain-enabled" checked>
+                      <span>启用监控</span>
+                    </label>
+                    <div style="display: flex; gap: 12px;">
+                      <button type="button" class="btn btn-default" onclick="hideModal()" style="margin: 0;">取消</button>
+                      <button type="button" class="btn btn-primary" onclick="handleImportDomains()" style="margin: 0;">导入</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-item" id="import-status" style="display: none;">
+                <div class="form-item-extra" style="padding: 8px 12px; background: var(--bg-secondary); border-radius: 4px;">
+                  <span id="import-status-text"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 添加文件选择监听
+      document.getElementById('import-file').addEventListener('change', handleFileSelect);
+    }
+
+    // 处理文件选择
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const content = e.target.result;
+          const domains = content.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+          const previewEl = document.getElementById('import-preview');
+          if (previewEl) {
+            previewEl.innerHTML = `<strong>解析到 ${domains.length} 个域名：</strong><br>${domains.slice(0, 10).join('<br>')}${domains.length > 10 ? '<br>...' : ''}`;
+          }
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    // 处理批量导入
+    async function handleImportDomains() {
+      const fileInput = document.getElementById('import-file');
+      const alertDays = parseInt(document.getElementById('import-alert-days').value);
+      const enabled = document.getElementById('import-domain-enabled').checked;
+      const statusEl = document.getElementById('import-status');
+      const statusTextEl = document.getElementById('import-status-text');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showNotification('error', '失败', '请选择文件');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const content = e.target.result;
+        const domainNames = content.split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0);
+
+        if (domainNames.length === 0) {
+          showNotification('error', '失败', '文件中没有找到有效的域名');
+          return;
+        }
+
+        // 显示导入状态
+        if (statusEl && statusTextEl) {
+          statusEl.style.display = 'block';
+          statusTextEl.textContent = `正在导入 ${domainNames.length} 个域名...`;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+
+        for (const name of domainNames) {
+          try {
+            const response = await fetch(`${API_BASE}/domains`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, alert_days: alertDays, enabled })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+              successCount++;
+            } else {
+              failCount++;
+              errors.push(`${name}: ${data.error}`);
+            }
+          } catch (error) {
+            failCount++;
+            errors.push(`${name}: 导入失败`);
+          }
+        }
+
+        // 显示导入结果通知
+        if (failCount === 0) {
+          showNotification('success', '成功', `成功导入 ${successCount} 个域名`);
+        } else {
+          showNotification('warning', '完成', `成功 ${successCount} 个，失败 ${failCount} 个。查看控制台了解详情`);
+          console.log('导入错误详情:', errors);
+        }
+
+        // 自动关闭弹框并刷新域名列表
+        setTimeout(() => {
+          hideModal();
+          
+          // 导入成功后自动批量检查
+          if (successCount > 0) {
+            handleCheckAll();
+          }
+        }, 500);
+      };
+
+      reader.readAsText(file);
+    }
+
+
+    
+    // 切换启用状态
+    async function toggleDomain(id) {
+      const domain = domains.find(d => getId(d.id) === id);
+      if (!domain) return;
+      
+      const newEnabled = !domain.enabled;
+      
+      try {
+        const response = await fetch(`${API_BASE}/domains/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name: domain.name, 
+            alert_days: domain.alert_days, 
+            enabled: newEnabled 
+          })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('success', '成功', newEnabled ? '已启用监控' : '已禁用监控');
+          fetchDomains();
+        } else {
+          showNotification('error', '失败', data.error);
+          fetchDomains();
+        }
+      } catch (error) {
+        console.error('切换状态失败:', error);
+        showNotification('error', '失败', '切换状态失败');
+        fetchDomains();
+      }
+    }
+    
+    // 检查证书
+    async function handleCheckDomain(id) {
+      try {
+        showNotification('success', '提示', '正在检查证书...');
+        const response = await fetch(`${API_BASE}/domains/${id}/check`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('success', '成功', '证书检查完成');
+          fetchDomains();
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('检查证书失败:', error);
+        showNotification('error', '失败', '检查证书失败');
+      }
+    }
+    
+    // 批量检查
+    async function handleCheckAll() {
+      try {
+        showNotification('success', '提示', '正在批量检查...');
+        const response = await fetch(`${API_BASE}/domains/check-all`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('success', '成功', `批量检查完成，共检查 ${data.total} 个域名`);
+          fetchDomains();
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('批量检查失败:', error);
+        showNotification('error', '失败', '批量检查失败');
+      }
+    }
+    
+    // 删除域名
+    async function handleDeleteDomain(id) {
+      if (!confirm('确定要删除这个域名吗？')) return;
+      
+      try {
+        const response = await fetch(`${API_BASE}/domains/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('success', '成功', '域名删除成功');
+          fetchDomains();
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('删除域名失败:', error);
+        showNotification('error', '失败', '删除域名失败');
+      }
+    }
+    
+    // 加载设置
+    function loadSettings() {
+      const webhook = localStorage.getItem('wechat_webhook') || '';
+      document.getElementById('wechat-webhook').value = webhook;
+
+      const enabled = localStorage.getItem('notify_enabled') !== 'false';
+      const enabledEl = document.getElementById('notify-enabled');
+      if (enabledEl) {
+        enabledEl.checked = enabled;
+        updateNotifyEnabledText(enabled);
+      }
+
+      const mobiles = localStorage.getItem('notify_mobiles') || '';
+      const mobilesEl = document.getElementById('notify-mobiles');
+      if (mobilesEl) mobilesEl.value = mobiles;
+
+      const userids = localStorage.getItem('notify_userids') || '';
+      const useridsEl = document.getElementById('notify-userids');
+      if (useridsEl) useridsEl.value = userids;
+
+      // 监听通知开关变化
+      if (enabledEl) {
+        enabledEl.addEventListener('change', (e) => {
+          updateNotifyEnabledText(e.target.checked);
+        });
+      }
+    }
+
+    // 更新通知开关文本
+    function updateNotifyEnabledText(enabled) {
+      const textEl = document.getElementById('notify-enabled-text');
+      if (textEl) {
+        textEl.textContent = enabled ? '启用通知' : '禁用通知';
+      }
+    }
+    
+    // 保存设置
+    async function handleSaveSettings(event) {
+      event.preventDefault();
+
+      const webhook = document.getElementById('wechat-webhook').value.trim();
+      const enabled = document.getElementById('notify-enabled').checked;
+      const mobiles = document.getElementById('notify-mobiles').value.trim();
+      const userids = document.getElementById('notify-userids').value.trim();
+
+      localStorage.setItem('wechat_webhook', webhook);
+      localStorage.setItem('notify_enabled', enabled);
+      localStorage.setItem('notify_mobiles', mobiles);
+      localStorage.setItem('notify_userids', userids);
+
+      // 同步到服务器
+      try {
+        const response = await fetch(`${API_BASE}/notification/config/wechat`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            webhookUrl: webhook,
+            enabled: enabled,
+            mention: {
+              mobiles: mobiles ? mobiles.split(',').map(s => s.trim()) : [],
+              userids: userids ? userids.split(',').map(s => s.trim()) : []
+            }
+          })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          showNotification('success', '成功', '通知设置已保存');
+        } else {
+          showNotification('error', '失败', data.error);
+        }
+      } catch (error) {
+        console.error('保存设置失败:', error);
+        // 本地保存成功，但服务器同步失败
+        showNotification('success', '本地保存成功', '设置已保存到本地，但服务器同步失败');
+      }
+    }
+
+    // 发送测试通知
+    async function handleTestNotification() {
+      const webhook = document.getElementById('wechat-webhook').value.trim();
+      if (!webhook) {
+        showNotification('error', '失败', '请先配置企业微信 Webhook URL');
+        return;
+      }
+
+      const statusEl = document.getElementById('test-notification-status');
+      statusEl.textContent = '正在发送...';
+
+      try {
+        const response = await fetch(`${API_BASE}/test-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ webhook })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          showNotification('success', '成功', '测试通知已发送');
+          statusEl.textContent = '发送成功 ✓';
+        } else {
+          showNotification('error', '失败', data.error);
+          statusEl.textContent = '发送失败: ' + data.error;
+        }
+      } catch (error) {
+        console.error('发送测试通知失败:', error);
+        showNotification('error', '失败', '发送测试通知失败');
+        statusEl.textContent = '发送失败';
+      }
+    }
+
+    // 重置设置
+    function handleResetSettings() {
+      if (!confirm('确定要重置为默认设置吗？')) return;
+
+      document.getElementById('wechat-webhook').value = '';
+      document.getElementById('notify-mobiles').value = '';
+      document.getElementById('notify-userids').value = '';
+      const enabledEl = document.getElementById('notify-enabled');
+      if (enabledEl) {
+        enabledEl.checked = true;
+        updateNotifyEnabledText(true);
+      }
+
+      localStorage.removeItem('wechat_webhook');
+      localStorage.removeItem('notify_enabled');
+      localStorage.removeItem('notify_mobiles');
+      localStorage.removeItem('notify_userids');
+
+      showNotification('success', '成功', '设置已重置');
+    }
+  </script>
+</body>
+</html>
